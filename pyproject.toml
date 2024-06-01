@@ -17,3 +17,6 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts]
+testing = "./src/pdm_helpers/test_runner.py"
