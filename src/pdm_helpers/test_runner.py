@@ -127,14 +127,6 @@ packages_list = [
     "google-cloud-storage",
     "more-itertools",
 ]
-
-# try:
-#     with open("data/modules.txt", "r") as file:
-#         lines = file.readlines()
-#         for row in lines[:10]:
-#             packages_list.append(row[1:-2])
-# except:
-#     print("file with modules not found")
 print("All packages: ", packages_list)
 # TODO: remove relative paths
 testing_commands = {
