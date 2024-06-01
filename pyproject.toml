@@ -1,0 +1,19 @@
+[project]
+name = "pdm-helpers"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Adam Jeliński", email = "adas.jelinski@gmail.com"},
+]
+dependencies = [
+    "tqdm>=4.66.4",
+    "tabulate>=0.9.0",
+    "findpython>=0.6.1",
+]
+requires-python = "==3.10.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
