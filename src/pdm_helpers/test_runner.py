@@ -30,12 +30,13 @@ packages_list = [
 ]
 
 try:
-    with open("modules.txt", "r") as file:
-        for row in file.readlines():
+    with open("data/modules.txt", "r") as file:
+        lines = file.readlines()
+        for row in lines[:500]:
             packages_list.append(row[1:-3])
 except:
     print("file with modules not found")
-
+print("All packages: ", packages_list)
 # TODO: remove relative paths
 testing_commands = {
     "pdm list": ["pdm", "list"],
