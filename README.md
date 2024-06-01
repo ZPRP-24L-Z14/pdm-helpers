@@ -1,37 +1,64 @@
 # pdm-helpers
 
-Problem:
+## Problem:
 
 PDM usuwa wirtualne środowisko virtualenv po wywołaniu pozornie niezwiązanych komend np. "pdm list"
 
-Odtworzenie problemu:
-1. Utworzenie pustego projektu 
-2. Wykonanie FINDPYTHON_GET_VERSION_TIMEOUT=0.1 
-3. pdm list
+[link do oryginalnego issue](https://github.com/pdm-project/pdm/issues/1701)
 
-Problem z PDM występuje podczas sprawdzania wersji Pythona. 
-Jest ona sprawdzana przy wykonaniu jakiejkolwiek komendy pdm-a
-Jeśli Python nie uruchomi się w ciągu 0.1 sekundy, narzędzie zgłasza błąd, co sugeruje, że instalacja Pythona jest uszkodzona.
+## Szukanie źródła problemu:
 
-Przyczyna:
+Początkowo mieliśmy sporo problemów z reprodukcją tego issue. Nawet przy instalacji setek paczek nie udało się odpowiednio spowolnić Pythona, aby powtórzyć ten problem na względnie szybkiej maszynie.
+Podczas szukania tego błędu, stworzyliśmy narzędzia do znajdowania najlżejszych paczek z pip, oraz do automatycznego tworzenia projektów w pdm, instalowaniu wszystkich paczek oraz testowaniu jak zmienił się czas wykonywania różnych skryptów.
+
+Kiedy nie udało nam się wydłużyć czasu uruchomienia do 5s, zaczęliśmy przeszukiwać kod pdma, w poszukiwaniu miejsc, które mogłyby spowodować ten błąd.
+
+Wtedy trafiliśmy na opcję `FINDPYTHON_GET_VERSION_TIMEOUT` w bibliotece findpython, którą pdm używa do znajdowania i weryfikacji wersji pythona. Po ustawieniu tego parametru na bardzo niską wartość (dokładnie to 0.01), udało się uzyskać ten sam efekt, co w oryginalnym błędzie: venv został usunięty.
+
+Dzięki temu wiedzieliśmy, że problem jest całkowicie niezależny od pdma, bo występuje tylko jak findpython uzna że instalacja Pythona jest uszkodzona (uruchamia się zbyt długo)
+
+Korzystając z tej informacji, wiedzieliśmy, że szukamy powodu, dla którego Python się dłużej inicjalizuje, jeżeli mamy zainstalowane wiele bibliotek. Wtedy dotarliśmy do naszego proponowanego rozwiązania.
+
+## Symulacja problemu:
+
+1. Utworzenie pustego projektu
+2. Wykonanie `export FINDPYTHON_GET_VERSION_TIMEOUT=0.01`
+3. `pdm list`
+
+Podczas wykonywania dowolnej komendy, pdm sprawdza wersję Pythona przy pomocy findpython. Jako że nadpisaliśmy domyślny timeout, to jeżeli ten proces zajmie więcej niż 0.01s, to findpython się "poddaje" i pdm uznaje że instalacja jest uszkodzona i usuwa virtualenv.
+
+## Przyczyna:
 
 Paczka findpython uznaje instalację Pythona za uszkodzoną, jeśli uruchomienie interpretera trwa dłużej niż 5 sekund.
 
-Proponowane rozwiązanie:
+## Proponowane rozwiązanie:
 
-W tym przypadku, sugeruje się sprawdzenie wersji Pythona za pomocą argumentu -S, co wyłącza automatyczny import modułu site. 
-Dzięki temu Python uruchamia się znacznie szybciej, ponieważ nie ładuje żadnych zainstalowanych bibliotek. 
-To podejście pozwala na uniknięcie timeoutu podczas sprawdzania wersji Pythona przez PDM.
+W tym przypadku, sugerujemy się użycie argumentu -S podczas sprawdzania wersji Pythona, co wyłącza automatyczny import modułu site.
+Dzięki temu Python uruchamia się znacznie szybciej, ponieważ nie ładuje żadnych zainstalowanych bibliotek.
+To podejście pozwala na uniknięcie timeoutu podczas sprawdzania wersji Pythona przez pdm.
 
-Po głębszej analizie problemu i związanych bibliotek odkryliśmy, że problem został już rozwiązany w bibliotece findpython rok temu przez push bezpośrednio na branch main przez głównego maintainera: 
-https://github.com/frostming/findpython/commit/0213bdb843fc8d82717c01e5f58d71faf45a9c53?fbclid=IwZXh0bgNhZW0CMTAAAR2-Ti9QydVjWVLr6OK1_Bg4zCT0kAm15cqojzB8pSv1u9ChqmJEatrG9MA_aem_AU60VrNhC9G_CpLFzDdC6QKWZm68NqA7i7P_wTI_e4-jeH81y8GyZu8QAnE81-Z1rem4Awyx6pSZp0sfTYvtmqqn
+Po głębszej analizie problemu i związanych bibliotek odkryliśmy, że problem został już rozwiązany w bibliotece findpython rok temu przez push bezpośrednio na branch main przez głównego maintainera:
+https://github.com/frostming/findpython/commit/0213bdb843fc8d82717c01e5f58d71faf45a9c53
 
-Testowanie:
+Ze względu na to jak ukryte było to rozwiązanie, to nie udało nam się go zidentyfikować wcześniej.
 
-1. Tworzenie projektu w pdmie
-2. Testuje długości wykonywania komend
+To tłumaczy nasze problemy z odtworzeniem problemu bez argumentu `FINDPYTHON_GET_VERSION_TIMEOUT`, ponieważ było to niemożliwe. Można zauważyć, że nie ma różnicy w czasach wykonywania testu z findpython w naszym narzędziu, co potwierdza naszą teorię że błąd ten został rozwiązany.
+
+W związku z tym nie tworzyliśmy własnego pull requesta.
+
+Jeżeli Python uruchamia się ponad 5s z argumentem -S to błąd ten nadal wystąpi, ale jest to sytuacja ekstremalna.
+Jeżeli jednak ma się na tyle wolne urządzenie, można ręcznie ustawić parametr `FINDPYTHON_GET_VERSION_TIMEOUT` na odpowiednio dużą wartość.
+
+## Testowanie:
+
+Nasze narzędzie `test_runner` wykonuje następujące operacje:
+
+1. Tworzy projektu w pdmie
+2. Testuje czas wykonywania komend
 3. Instalacje dependency
-4. Ponowienie
-5. Wyświetlenie różnicy między oboma odtworzeniami ( procedura jest powtarzana, a wyniki uśredniane)
+4. Ponowienie testuje czas wykonywania komend
+5. Wyświetla różnicę czasu między oboma odtworzeniami
 
-W normalnych warunkach na szybkim komputerze python uruchamia się w ułamku sekundy. Przez to bardzo ciężko jest wystarczająco spowolnić jego pracę, aby uruchomienie interpretera zajęło ponad 5s
+Wykonywane jest wiele pomiarów czasu, aby zminimalizować wpływ obciążenia komputera i innych zmiennych losowych.
+
+Dzięki temu narzędziu udało nam się zauważyć, że nasze próby powtórzenia tego issue nie mogły się udać.
