@@ -29,6 +29,13 @@ packages_list = [
     "scipy",
 ]
 
+try:
+    with open("modules.txt", "r") as file:
+        for row in file.readlines():
+            packages_list.append(row)
+except:
+    print("file with modules not found")
+
 # TODO: remove relative paths
 testing_commands = {
     "pdm list": ["pdm", "list"],
