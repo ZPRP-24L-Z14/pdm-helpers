@@ -127,21 +127,6 @@ packages_list = [
     "google-cloud-storage",
     "more-itertools",
 ]
-print("All packages: ", packages_list)
-# TODO: remove relative paths
-testing_commands = {
-    "pdm list": ["pdm", "list"],
-    "findpython": ["pdm", "run", "../src/pdm_helpers/findpython.py"],
-    "regular python": ["pdm", "run", "python3", "../src/pdm_helpers/speed_test.py"],
-    "python without site modules": [
-        "pdm", 
-        "run",
-        "python3",
-        "-S",
-        "../src/pdm_helpers/speed_test.py",
-    ],
-}
-
 
 def execute_command(command: List[str], cwd="", mute_output=False):
     if mute_output:
